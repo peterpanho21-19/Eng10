@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Bộ đếm lượt xem / tải. Ai cũng đọc được; chỉ được tăng mỗi lần tối đa 1 đơn vị.
+    match /stats/{docId} {
+      allow read: if true;
+
+      allow create: if docId.matches('^[a-z0-9-]{1,40}$')
+        && request.resource.data.keys().hasOnly(['views', 'downloads'])
+        && request.resource.data.views >= 0 && request.resource.data.views <= 1
+        && request.resource.data.downloads >= 0 && request.resource.data.downloads <= 1;
+
+      allow update: if request.resource.data.keys().hasOnly(['views', 'downloads'])
+        && request.resource.data.views >= resource.data.views
+        && request.resource.data.views <= resource.data.views + 1
+        && request.resource.data.downloads >= resource.data.downloads
+        && request.resource.data.downloads <= resource.data.downloads + 1;
+
+      allow delete: if false;
+    }
+
+    // Mọi thứ khác bị chặn.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
